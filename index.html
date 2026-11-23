@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Mystery Island — L’île des secrets</title>
+<link rel="manifest" href="manifest.json"><meta name="theme-color" content="#0b1d2a"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-title" content="Mystery Island"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><link rel="apple-touch-icon" href="icon-192.png"><link rel="icon" href="icon-192.png">
+<style>
+*{box-sizing:border-box}
+:root{--fg:#1b2b2a;--pn:#f6f1e4f2;--bt:#e9dfc6}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--fg:#eaf1ec;--pn:#14221ff2;--bt:#26382f}}
+:root[data-theme=dark]{--fg:#eaf1ec;--pn:#14221ff2;--bt:#26382f}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden;background:#0b1d2a;color:var(--fg);font:15px system-ui,sans-serif;touch-action:none;user-select:none;-webkit-user-select:none}
+canvas{position:fixed;inset:0;width:100%;height:100%}
+#hud>*{position:fixed;z-index:2}
+.sh{color:#fff;text-shadow:0 1px 3px #000}
+#tl{left:10px;top:calc(8px + env(safe-area-inset-top,0px));width:min(230px,52vw)}
+.bar{height:6px;background:#0006;border-radius:3px;margin:4px 0}
+#xp{height:100%;background:#e0a526;border-radius:3px;width:0}
+#q{font-size:13px}
+#tr{right:8px;top:calc(8px + env(safe-area-inset-top,0px));display:flex;gap:5px;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:46vw}
+button{font:inherit;border:0;border-radius:10px;padding:9px 13px;background:var(--bt);color:var(--fg)}
+#tr button{padding:6px 8px;background:#0007}
+#joy{left:22px;bottom:calc(24px + env(safe-area-inset-bottom,0px));width:130px;height:130px;border-radius:50%;background:#fff3;border:2px solid #fff6}
+#kn{position:absolute;left:40px;top:40px;width:46px;height:46px;border-radius:50%;background:#fffb;pointer-events:none}
+.rb{width:68px;height:68px;border-radius:50%!important;background:#fff4!important;color:#fff!important;border:2px solid #fff7!important;font-size:13px;padding:0!important}
+#bj{right:22px;bottom:calc(112px + env(safe-area-inset-bottom,0px))}
+#bi{right:22px;bottom:calc(30px + env(safe-area-inset-bottom,0px))}
+#pn{position:fixed;z-index:5;left:50%;top:50%;transform:translate(-50%,-50%);width:min(92vw,420px);max-height:80vh;overflow:auto;background:var(--pn);color:var(--fg);border-radius:16px;padding:16px;touch-action:pan-y}
+#pn h2{margin:0 0 8px}#pn ul{list-style:none;padding:0;margin:8px 0}#pn li{padding:6px 0;border-bottom:1px solid #8884}
+#pn button{margin:4px 4px 0 0}#pn canvas{position:static;width:100%;height:auto;border-radius:10px}
+#x{position:absolute;right:8px;top:8px}
+#toast{position:fixed;z-index:6;left:50%;top:calc(90px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:#000b;color:#fff;padding:8px 14px;border-radius:12px;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center;max-width:88vw}
+#menu{position:fixed;z-index:9;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:linear-gradient(#0b1d2aaa,#0b1d2aee);color:#fff;text-align:center;padding:20px}
+#menu h1{margin:0;letter-spacing:.12em;font-size:clamp(26px,7vw,48px)}#menu p{margin:0 0 10px;opacity:.8}
+#menu button{width:230px;font-size:17px}#menu small{opacity:.7;max-width:330px}
+</style></head><body>
+<div id="hud" hidden>
+ <div id="tl" class="sh"><b id="lv"></b> <span id="clk"></span><div class="bar"><div id="xp"></div></div><div id="q"></div></div>
+ <div id="tr" class="sh"><span id="go"></span><span id="ge"></span>
+  <button onclick="panel('inv')">🎒</button><button onclick="panel('map')">🗺️</button><button onclick="panel('quest')">📋</button><button onclick="panel('village')">🏠</button><button onclick="panel('pause')">⏸</button></div>
+ <div id="joy"><div id="kn"></div></div>
+ <button id="bj" class="rb">Saut</button><button id="bi" class="rb">✋</button>
+</div>
+<div id="pn" hidden></div><div id="toast"></div>
+<div id="menu">
+ <h1>MYSTERY ISLAND</h1><p>L’île des secrets</p>
+ <div>Tenue du personnage</div><div id="sw"></div>
+ <button id="bc" onclick="start(1)">Continuer</button>
+ <button onclick="start(0)">Nouvelle partie</button>
+ <small>Tactile : joystick à gauche, glisse à droite pour la caméra. Clavier : ZQSD/WASD, Maj = courir, Espace = saut, E = interagir, I inventaire, M carte, J missions, B village, Échap pause.</small>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id),T=THREE,KEY="mystery-island-v1";
+const rng=s=>()=>{s|=0;s=s+0x6D2B79F5|0;let t=Math.imul(s^s>>>15,1|s);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const R=rng(7),R2=rng(99);
+// ---------- Monde (hauteur du terrain) ----------
+const H=(x,z)=>{const r=Math.hypot(x,z),i=Math.max(0,1-(r/88)**2);return i*(6+1.2*(Math.sin(x*.08)*Math.cos(z*.07)*1.5+Math.sin(x*.2+z*.15)*.5))-2};
+const beachAt=a=>{for(let r=95;r>0;r-=.5){const x=Math.cos(a)*r,z=Math.sin(a)*r;if(H(x,z)>.5)return[x,z]}return[0,0]};
+const SP=(()=>{const[a,b]=beachAt(Math.PI/2);return[a*.93,b*.93]})(),CH=[-24,16];
+// ---------- État / sauvegarde (zones, missions, trésors, constructions : données extensibles) ----------
+const fresh=()=>({x:SP[0],z:SP[1],face:0,inv:{wood:0,stone:0,gold:0,gem:0,relic:0},flags:{},taken:[],huts:[],xp:0,lvl:1,step:0,qdone:false,t:.2,col:0});
+let S=fresh();
+const save=()=>{try{S.x=px;S.z=pz;S.face=face;localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const load=()=>{try{const j=localStorage.getItem(KEY);return j?JSON.parse(j):null}catch(e){return null}};
+const Q=[{t:"Trouve la bouteille échouée sur la plage",d:()=>S.flags.bottle},
+ {t:"Récolte 5 bois et 3 pierres",d:()=>S.huts.length||(S.inv.wood>=5&&S.inv.stone>=3)},
+ {t:"Construis une cabane (menu Village 🏠)",d:()=>S.huts.length},
+ {t:"Trouve le coffre dans la forêt (voir la carte)",d:()=>S.flags.chest}];
+// ---------- Rendu ----------
+const ren=new T.WebGLRenderer({antialias:true});ren.setPixelRatio(Math.min(devicePixelRatio,2));document.body.prepend(ren.domElement);
+const sc=new T.Scene(),cam=new T.PerspectiveCamera(60,1,.1,400);
+const hemi=new T.HemisphereLight(0xcfe8ff,0x4a5a3a,.7),sun=new T.DirectionalLight(0xfff2d0,1);sc.add(hemi,sun);
+sc.fog=new T.Fog(0x9fd0ee,40,220);
+const mat=c=>new T.MeshLambertMaterial({color:c});
+{const g=new T.PlaneGeometry(260,260,110,110);g.rotateX(-Math.PI/2);const p=g.attributes.position,cl=new Float32Array(p.count*3),c=new T.Color();
+ for(let i=0;i<p.count;i++){const h=H(p.getX(i),p.getZ(i));p.setY(i,h);c.set(h<.5?0xc9b87f:h<1.2?0xe3d3a0:h<4.5?0x4f7a34:0x7d8a6b).offsetHSL(0,0,(R()-.5)*.06);cl.set([c.r,c.g,c.b],i*3)}
+ g.setAttribute("color",new T.BufferAttribute(cl,3));g.computeVertexNormals();sc.add(new T.Mesh(g,new T.MeshLambertMaterial({vertexColors:true})))}
+const water=new T.Mesh(new T.PlaneGeometry(900,900).rotateX(-Math.PI/2),new T.MeshPhongMaterial({color:0x1e7fb0,transparent:true,opacity:.78,shininess:100}));sc.add(water);
+const TREES=[];
+{const tr=new T.InstancedMesh(new T.CylinderGeometry(.2,.35,5,6),mat(0x6b4a2b),150),lf=new T.InstancedMesh(new T.ConeGeometry(2,4.5,7),mat(0x2f6b2c),150),o=new T.Object3D();let n=0;
+ while(n<150){const x=(R()-.5)*150,z=(R()-.5)*150,h=H(x,z);if(h<1.8||Math.hypot(x-CH[0],z-CH[1])<6)continue;const s=.7+R()*.8;
+  o.scale.set(s,s,s);o.rotation.set(0,0,0);o.position.set(x,h+2.5*s,z);o.updateMatrix();tr.setMatrixAt(n,o.matrix);
+  o.rotation.y=R()*6;o.position.y=h+6*s;o.updateMatrix();lf.setMatrixAt(n,o.matrix);TREES.push([x,z,.7*s]);n++}
+ sc.add(tr,lf)}
+// ---------- Objets à ramasser ----------
+const MK={wood:()=>{const m=new T.Mesh(new T.CylinderGeometry(.12,.12,1.3,6),mat(0x8a5a2b));m.rotation.z=1.5;return m},
+ stone:()=>new T.Mesh(new T.DodecahedronGeometry(.4),mat(0x8c8f93)),
+ bottle:()=>{const m=new T.Mesh(new T.CylinderGeometry(.14,.14,.7,8),new T.MeshLambertMaterial({color:0x66e0a0,emissive:0x1a6a40}));m.rotation.z=1.4;return m},
+ chest:()=>{const g=new T.Group(),b=new T.Mesh(new T.BoxGeometry(1.2,.7,.8),mat(0x7a4a22)),l=new T.Mesh(new T.BoxGeometry(1.24,.25,.84),new T.MeshLambertMaterial({color:0xd9a520,emissive:0x6a4a00}));b.position.y=.35;l.position.y=.8;g.add(b,l);return g}};
+const DEFS=[],bp=beachAt(Math.PI/2+.35);DEFS.push({id:"bottle",type:"bottle",x:bp[0]*.97,z:bp[1]*.97},{id:"chest",type:"chest",x:CH[0],z:CH[1]});
+for(const[t,n]of[["wood",16],["stone",12]])for(let i=0;i<n;i++){let x,z,h;do{x=(R2()-.5)*150;z=(R2()-.5)*150;h=H(x,z)}while(h<1.2||h>5||Math.hypot(x,z)>78);DEFS.push({id:t+i,type:t,x,z})}
+const itemsG=new T.Group(),hutsG=new T.Group();sc.add(itemsG,hutsG);let items=[],col=[];
+function hutMesh(x,z,r){const g=new T.Group(),b=new T.Mesh(new T.BoxGeometry(3,2,3),mat(0xa67c52)),t=new T.Mesh(new T.ConeGeometry(2.7,1.6,4),mat(0x7a3b2a));b.position.y=1;t.position.y=2.8;t.rotation.y=Math.PI/4;g.add(b,t);g.position.set(x,H(x,z),z);g.rotation.y=r;return g}
+function refresh(){itemsG.clear();hutsG.clear();items=[];col=TREES.slice();
+ for(const d of DEFS){if(S.taken.includes(d.id))continue;const m=MK[d.type]();m.position.set(d.x,H(d.x,d.z)+.3,d.z);itemsG.add(m);items.push({...d,mesh:m})}
+ for(const[x,z,r]of S.huts){hutsG.add(hutMesh(x,z,r));col.push([x,z,2.3])}}
+// ---------- Joueur ----------
+const COLS=["#2f6f9f","#b5532e","#4d7c3a","#6b4e8f"],pl=new T.Group(),shirt=mat(COLS[0]);
+{const part=(g,m,y,z=0)=>{const a=new T.Mesh(g,m);a.position.set(0,y,z);pl.add(a)};
+ part(new T.CylinderGeometry(.28,.3,.8,10),shirt,1.1);part(new T.SphereGeometry(.22,12,10),mat(0xc58c64),1.7);part(new T.CylinderGeometry(.2,.2,.7,8),mat(0x3b3a36),.35);part(new T.BoxGeometry(.4,.5,.2),mat(0x6b4a2b),1.2,-.35);sc.add(pl)}
+$("sw").innerHTML=COLS.map((c,i)=>`<button onclick="setCol(${i})" style="background:${c};width:44px;height:44px;margin:4px"></button>`).join("");
+function setCol(i){S.col=i;shirt.color.set(COLS[i])}
+// ---------- Logique de jeu ----------
+let px=S.x,pz=S.z,py=0,vy=0,face=0,cy=0,cp=.35,jx=0,jy=0,open=null,started=false,last=performance.now(),tt;
+const used=()=>S.inv.wood+S.inv.stone,cap=()=>20+5*S.lvl;
+function toast(m){const t=$("toast");t.textContent=m;t.style.opacity=1;clearTimeout(tt);tt=setTimeout(()=>t.style.opacity=0,3200)}
+function xp(n){S.xp+=n;while(S.xp>=100*S.lvl){S.xp-=100*S.lvl;S.lvl++;S.inv.gold+=20;toast("Niveau "+S.lvl+" ! +20 pièces, sac agrandi à "+cap());beep(880)}}
+function ui(){$("lv").textContent="Niv. "+S.lvl;$("xp").style.width=S.xp/S.lvl+"%";$("go").textContent="🪙 "+S.inv.gold;$("ge").textContent="💎 "+S.inv.gem;
+ $("q").textContent=S.qdone?"✔ Mission terminée — explore librement":"🎯 "+Q[S.step].t}
+function check(){if(!S.qdone){while(S.step<Q.length&&Q[S.step].d()){toast("Étape accomplie : "+Q[S.step].t);xp(30);S.step++}
+ if(S.step>=Q.length){S.qdone=true;S.inv.gold+=100;S.inv.gem++;xp(100);toast("Mission « Les naufragés » terminée ! +100 pièces, +1 gemme");beep(990)}}ui();save()}
+function near(){let b=null,bd=3.4;for(const it of items){const d=Math.hypot(it.x-px,it.z-pz);if(d<bd){bd=d;b=it}}return b}
+function act(){const it=near();if(!it)return;const t=it.type;
+ if((t=="wood"||t=="stone")&&used()>=cap())return toast("Sac plein — monte de niveau pour l’agrandir");
+ S.taken.push(it.id);itemsG.remove(it.mesh);items.splice(items.indexOf(it),1);
+ if(t=="wood"||t=="stone"){S.inv[t]++;xp(4);toast(t=="wood"?"+1 bois":"+1 pierre")}
+ else if(t=="bottle"){S.flags.bottle=1;xp(25);toast("Fragment de carte trouvé ! Ouvre la carte 🗺️")}
+ else{S.flags.chest=1;S.inv.gold+=60;S.inv.gem++;S.inv.relic++;xp(60);toast("Coffre ouvert : +60 pièces, +1 gemme, +1 objet ancien")}
+ beep(t=="chest"?880:600);check()}
+function build(){if(S.inv.wood<5||S.inv.stone<3)return toast("Il faut 5 bois et 3 pierres");
+ const x=px+Math.sin(face)*5,z=pz+Math.cos(face)*5;if(H(x,z)<.8)return toast("Emplacement impossible ici");
+ S.inv.wood-=5;S.inv.stone-=3;S.huts.push([x,z,face]);xp(40);toast("Cabane construite !");beep(520);refresh();check();panel()}
+function sell(){if(S.inv.relic<1)return;S.inv.relic--;S.inv.gold+=40;beep(700);ui();save();panel("inv")}
+function jump(){if(py<=Math.max(H(px,pz),-.3)+.05)vy=7}
+// ---------- Panneaux ----------
+function panel(k){open=k||null;const p=$("pn");p.hidden=!k;if(!k)return;let h="";
+ if(k=="inv")h=`<h2>Inventaire</h2><p>Sac de départ : ${used()}/${cap()} (bois + pierres)</p><ul><li>🪵 Bois ×${S.inv.wood}</li><li>🪨 Pierres ×${S.inv.stone}</li><li>🪙 Pièces ×${S.inv.gold}</li><li>💎 Gemmes ×${S.inv.gem}</li><li>🏺 Objets anciens ×${S.inv.relic} <button onclick="sell()">Vendre (40 🪙)</button></li><li>🧩 Fragments de carte ×${(S.flags.bottle?1:0)+(S.flags.chest?1:0)}</li></ul>`;
+ if(k=="map")h=`<h2>Carte de l’île</h2><canvas id="mc" width="300" height="300"></canvas><p>🔴 toi · 🏠 cabanes · cercle doré : zone du trésor${S.flags.bottle?"":" (trouve la bouteille)"}</p>`;
+ if(k=="quest")h=`<h2>Les naufragés</h2><ul>${Q.map((q,i)=>`<li>${i<S.step||S.qdone?"✅":i==S.step?"🎯":"⬜"} ${q.t}</li>`).join("")}</ul><p>Récompense : 100 🪙, 1 💎, bonus d’XP.</p>`;
+ if(k=="village")h=`<h2>Village</h2><p>Cabanes construites : ${S.huts.length}</p><button onclick="build()">Construire une cabane (5 🪵 + 3 🪨)</button><p>Elle est posée devant ton personnage.</p>`;
+ if(k=="pause")h=`<h2>Pause</h2><button onclick="panel()">Reprendre</button><button onclick="save();toast('Partie sauvegardée')">Sauvegarder</button><button onclick="toMenu()">Menu principal</button>`;
+ p.innerHTML=h+`<button id="x" onclick="panel()">✕</button>`;if(k=="map")drawMap($("mc"))}
+function drawMap(cv){const x=cv.getContext("2d"),s=cv.width,w=260,m=(a,b)=>[(a/w+.5)*s,(b/w+.5)*s];
+ for(let i=0;i<60;i++)for(let j=0;j<60;j++){const h=H((i/60-.5)*w,(j/60-.5)*w);x.fillStyle=h<-.1?"#1e6f9f":h<1.2?"#e0cf98":h<4.5?"#4f7a34":"#7d8a6b";x.fillRect(i*s/60,j*s/60,s/60+1,s/60+1)}
+ if(S.flags.bottle&&!S.flags.chest){const[a,b]=m(CH[0]+6,CH[1]-5);x.strokeStyle="#e0a526";x.lineWidth=3;x.setLineDash([6,4]);x.beginPath();x.arc(a,b,24,0,7);x.stroke();x.fillStyle="#e0a526";x.font="bold 20px sans-serif";x.fillText("?",a-6,b+7)}
+ x.font="16px sans-serif";for(const h of S.huts){const[a,b]=m(h[0],h[1]);x.fillText("🏠",a-8,b+6)}
+ const[a,b]=m(px,pz);x.fillStyle="#e22";x.beginPath();x.arc(a,b,5,0,7);x.fill();x.strokeStyle="#fff";x.setLineDash([]);x.lineWidth=2;x.stroke()}
+// ---------- Audio (vagues + sons de récompense) ----------
+let AC;
+function audio(){if(AC)return;try{AC=new(window.AudioContext||window.webkitAudioContext)();const b=AC.createBuffer(1,AC.sampleRate*2,AC.sampleRate),d=b.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+ const s=AC.createBufferSource();s.buffer=b;s.loop=true;const f=AC.createBiquadFilter();f.type="lowpass";f.frequency.value=500;const g=AC.createGain();g.gain.value=.05;
+ const l=AC.createOscillator(),lg=AC.createGain();l.frequency.value=.12;lg.gain.value=.03;l.connect(lg);lg.connect(g.gain);s.connect(f);f.connect(g);g.connect(AC.destination);s.start();l.start()}catch(e){}}
+function beep(f){if(!AC)return;const o=AC.createOscillator(),g=AC.createGain(),t=AC.currentTime;o.frequency.value=f;g.gain.setValueAtTime(.15,t);g.gain.exponentialRampToValueAtTime(.001,t+.4);o.connect(g);g.connect(AC.destination);o.start();o.stop(t+.4)}
+// ---------- Commandes ----------
+const K={};
+addEventListener("keydown",e=>{K[e.code]=1;if(!started)return;if(e.code=="Space"&&!open)jump();if(e.code=="KeyE"&&!open)act();
+ const m={KeyI:"inv",KeyM:"map",KeyJ:"quest",KeyB:"village",Escape:"pause"}[e.code];if(m)panel(open?null:m)});
+addEventListener("keyup",e=>K[e.code]=0);
+let jid=null,jo=[0,0];const jz=$("joy");
+function mv(e){let dx=e.clientX-jo[0],dy=e.clientY-jo[1];const l=Math.hypot(dx,dy),m=55;if(l>m){dx*=m/l;dy*=m/l}jx=dx/m;jy=dy/m;$("kn").style.transform=`translate(${dx}px,${dy}px)`}
+jz.onpointerdown=e=>{jid=e.pointerId;jz.setPointerCapture(jid);const r=jz.getBoundingClientRect();jo=[r.left+r.width/2,r.top+r.height/2];mv(e)};
+jz.onpointermove=e=>{if(e.pointerId==jid)mv(e)};
+jz.onpointerup=jz.onpointercancel=()=>{jid=null;jx=jy=0;$("kn").style.transform=""};
+$("bj").onpointerdown=()=>{if(!open)jump()};$("bi").onpointerdown=()=>{if(!open)act()};
+let ld=null;ren.domElement.onpointerdown=e=>{ld=[e.pointerId,e.clientX,e.clientY]};
+addEventListener("pointermove",e=>{if(ld&&e.pointerId==ld[0]){cy-=(e.clientX-ld[1])*.006;cp=Math.min(1.2,Math.max(-.1,cp+(e.clientY-ld[2])*.004));ld[1]=e.clientX;ld[2]=e.clientY}});
+addEventListener("pointerup",e=>{if(ld&&e.pointerId==ld[0])ld=null});
+function rs(){ren.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener("resize",rs);
+// ---------- Boucle ----------
+const dayC=new T.Color(0x9fd0ee),nightC=new T.Color(0x0a1224),sk=new T.Color();sc.background=sk;
+function sky(){const a=S.t*Math.PI*2,e=Math.sin(a),k=Math.min(1,Math.max(0,e*3+.5));sk.copy(nightC).lerp(dayC,k);sc.fog.color.copy(sk);
+ sun.position.set(Math.cos(a)*100,Math.max(e,.05)*100,40);sun.intensity=.2+.9*k;hemi.intensity=.2+.55*k;$("clk").textContent=k>.5?"☀️":"🌙"}
+function move(dt){const mx=(K.KeyD||K.ArrowRight?1:0)-(K.KeyA||K.ArrowLeft?1:0)+jx,mz=(K.KeyS||K.ArrowDown?1:0)-(K.KeyW||K.ArrowUp?1:0)+jy,m=Math.min(1,Math.hypot(mx,mz));
+ if(m>.05){const dx=Math.cos(cy)*mx+Math.sin(cy)*mz,dz=-Math.sin(cy)*mx+Math.cos(cy)*mz,l=Math.hypot(dx,dz),run=K.ShiftLeft||m>.85,sp=(run?9:5.5*Math.min(1,m/.85))*dt;
+  let nx=px+dx/l*sp,nz=pz+dz/l*sp;
+  for(const[cx,cz,r]of col){const ax=nx-cx,az=nz-cz,d=Math.hypot(ax,az)||.01;if(d<r+.3){nx=cx+ax/d*(r+.3);nz=cz+az/d*(r+.3)}}
+  if(H(nx,nz)>-.5){px=nx;pz=nz}face=Math.atan2(dx,dz)}
+ const gr=Math.max(H(px,pz),-.3);if(vy>0||py>gr+.05){vy-=22*dt;py+=vy*dt;if(py<=gr){py=gr;vy=0}}else{py=gr;vy=0}}
+function loop(now){requestAnimationFrame(loop);const dt=Math.min(.05,(now-last)/1000);last=now;
+ if(started&&!open)move(dt);if(!started)cy+=dt*.12;
+ S.t=(S.t+dt/480)%1;sky();water.position.y=Math.sin(now/1000)*.06;
+ pl.position.set(px,py+(Math.abs(jx)+Math.abs(jy)>.1?Math.abs(Math.sin(now/110))*.06:0),pz);pl.rotation.y=face;
+ const d=7,ex=px+Math.sin(cy)*Math.cos(cp)*d,ez=pz+Math.cos(cy)*Math.cos(cp)*d;
+ cam.position.set(ex,Math.max(py+1.6+Math.sin(cp)*d,H(ex,ez)+1,.8),ez);cam.lookAt(px,py+1.3,pz);
+ const it=started&&!open?near():null;$("bi").textContent=it?(it.type=="chest"?"Ouvrir":"Prendre"):"✋";$("bi").style.opacity=it?1:.5;
+ ren.render(sc,cam)}
+// ---------- Menu ----------
+function start(c){if(!c){S=fresh();S.col=+(localStorage.getItem(KEY+"c")||0)}px=S.x;pz=S.z;face=S.face;setCol(S.col);refresh();audio();check();
+ started=true;$("menu").hidden=true;$("hud").hidden=false;py=H(px,pz);cy=Math.PI*0+0}
+function toMenu(){save();try{localStorage.setItem(KEY+"c",S.col)}catch(e){}started=false;panel();$("hud").hidden=true;$("menu").hidden=false;$("bc").hidden=false}
+const sv=load();if(sv)S=Object.assign(fresh(),sv);$("bc").hidden=!sv;px=S.x;pz=S.z;setCol(S.col);refresh();ui();rs();requestAnimationFrame(loop);
+setInterval(()=>{if(started)save()},10000);
+if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+</script></body></html>

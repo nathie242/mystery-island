@@ -1,0 +1,5 @@
+MYSTERY ISLAND — application installable (PWA)
+1. Mets ce dossier en ligne (HTTPS obligatoire), par exemple en le glissant sur https://app.netlify.com/drop
+2. Ouvre l’adresse obtenue sur ton téléphone.
+3. Android (Chrome) : menu ⋮ > « Installer l’application ». iPhone (Safari) : Partager > « Sur l’écran d’accueil ».
+L’icône apparaît ensuite comme une vraie app, en plein écran, et le jeu fonctionne hors connexion après la première ouverture.
